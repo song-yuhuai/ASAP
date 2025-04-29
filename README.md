@@ -4,6 +4,8 @@ Learning Agile Humanoid Whole-Body Skills </h1>
 
 <div align="center">
 
+Robotics: Science and Systems (RSS) 2025
+
 [[Website]](https://agile.human2humanoid.com/)
 [[Arxiv]](https://arxiv.org/pdf/2502.01143)
 [[Video]](https://www.youtube.com/watch?v=tu7LSNYWDTs&ab_channel=LeCARLabatCMU)
