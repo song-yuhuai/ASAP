@@ -54,13 +54,7 @@ Robotics: Science and Systems (RSS) 2025
 5. **[Deployment: Sim2Sim & Sim2Real](#sim2simsim2real)**  
    5.1 [Environment Setup](#environment-setup)  
    5.2 [Sim2Sim Deployment](#sim2sim)  
-       - Launch Simulation  
-       - Policy Control Shortcuts  
    5.3 [Sim2Real Deployment](#sim2real)  
-       - Unitree G1 Setup & Configuration  
-       - Running the Policy on Real Hardware  
-       - Safety Alerts & Disclaimer  
-       - Data Collection Demo  
 
 7. **[Citation](#citation)**  
 
