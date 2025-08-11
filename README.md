@@ -350,6 +350,145 @@ You shouold have
 <img src="imgs/g1_29dof_anneal_23dof_motion.gif" width="400px"/>
 
 
+
+
+# Sim2Sim/Sim2Real
+
+## Environment Setup
+
+Env Installation:
+```
+mamba create -n asap_deploy python=3.10
+mamba activate asap_deploy
+```
+
+
+
+Install ros2-python
+
+```bash
+# this adds the conda-forge channel to the new created environment configuration 
+conda config --env --add channels conda-forge
+# and the robostack channel
+conda config --env --add channels robostack-staging
+# remove the defaults channel just in case, this might return an error if it is not in the list which is ok
+conda config --env --remove channels defaults
+# install the ros2-python package
+conda install ros-humble-desktop
+```
+
+Test Ros2Installation:
+
+```bash
+rviz2
+```
+
+You should see the UI like this:
+
+<img src="imgs/rviz.png" width="400px"/>
+
+
+
+Install Unitree SDK
+
+```bash
+git clone git@github.com:unitreerobotics/unitree_sdk2_python.git
+cd unitree_sdk2_python
+pip install -e .
+```
+
+minor issue to fix:
+
+```bash
+pip install --upgrade numpy scipy
+```
+
+## Sim2Sim
+
+
+
+start the simulation in the sim2real folder:
+```bash
+python sim_env/base_sim.py --config=config/g1_29dof_hist.yaml
+```
+
+in another terminal, start the policy:
+```bash
+python rl_policy/deepmimic_dec_loco_height.py --config=config/g1_29dof_hist.yaml --loco_model_path=./models/dec_loco/20250109_231507-noDR_rand_history_loco_stand_height_noise-decoupled_locomotion-g1_29dof/model_6600.onnx --mimic_model_paths=./models/mimic
+```
+
+- click to the policy terminal and press `]` to activate the locomotion policy
+- click to the policy terminal and press `[` to activate the asap policy (phase-based motion tracking policy)
+- press `i` to make the robot the initial position
+- press `o` to emergence stop the robot
+- press `9` in mujoco viewer to release the robostack
+- press `=` to switch between tapping and walking for the locomotion policy
+- press `w/a/s/d` to control the linear velocity
+- press `q/e` to control the angular velocity
+- press `z` to set all commands to zero
+
+
+And you should be able to play around with some checkpoints from the ASAP paper. Have fun!
+
+<table>
+  <tr>
+    <td><img src="imgs/asap-sim2sim-clip0-ezgif.com-video-to-gif-converter.gif" width="300px"/></td>
+    <td><img src="imgs/asap-sim2sim-clip1-ezgif.com-video-to-gif-converter.gif" width="300px"/></td>
+    <td><img src="imgs/asap-sim2sim-clip3-ezgif.com-video-to-gif-converter.gif" width="300px"/></td>
+  </tr>
+  <tr>
+    <td><img src="imgs/asap-sim2sim-clip4-ezgif.com-video-to-gif-converter.gif" width="300px"/></td>
+    <td><img src="imgs/asap-sim2sim-clip5-ezgif.com-video-to-gif-converter.gif" width="300px"/></td>
+    <td><img src="imgs/asap-sim2sim-clip6-ezgif.com-video-to-gif-converter.gif" width="300px"/></td>
+  </tr>
+</table>
+<!-- Replace gif1.gif ... gif6.gif with your actual gif filenames and optionally add captions below each if desired -->
+
+
+
+## Sim2Real
+
+`Note from Tairan`: make sure to make the G1 robot to 29dof following this [doc](https://support.unitree.com/home/en/G1_developer/waist_fastener) and restart the robot after waist unlocking. If you don't know how to log into the Unitree Explore APP, contact unitree support.
+
+Enter Low-Level for g1
+- Open humanoid and wait until the head blue light is constantly on
+- `L2+R2`
+- `L2+A`
+- `L2+B`
+- Connect PC to the G1 by ethernet cable and configure the network following [this document](https://support.unitree.com/home/en/G1_developer/quick_development) 
+
+Before starting the policy, modify the `config/g1_29dof_hist.yaml` to set `INTERFACE` to `eth0` (if you are using linux), basically the network interface that you are using to connect to the robot with your PC's IP shown as `192.168.123.xxx` in `ifconfig`.
+
+start the policy:
+```bash
+python rl_policy/deepmimic_dec_loco_height.py --config=config/g1_29dof_hist.yaml --loco_model_path=./models/dec_loco/20250109_231507-noDR_rand_history_loco_stand_height_noise-decoupled_locomotion-g1_29dof/model_6600.onnx --mimic_model_paths=./models/mimic
+```
+
+
+
+- click to the policy terminal and press `]` to activate the locomotion policy
+- click to the policy terminal and press `[` to activate the asap policy (phase-based motion tracking policy)
+- press `i` to make the robot the initial position
+- press `o` to emergence stop the robot
+- press `9` in mujoco viewer to release the robostack
+- press `=` to switch between tapping and walking for the locomotion policy
+- press `w/a/s/d` to control the linear velocity
+- press `q/e` to control the angular velocity
+- press `z` to set all commands to zero
+- press `o` to emergence stop the robot
+
+
+### ‼️Alert & Disclaimer
+Deploying these models on physical hardware can be hazardous. Unless you have deep sim‑to‑real expertise and robust safety protocols, we strongly advise against running the model on real robots. These models are supplied for research use only, and we disclaim all responsibility for any harm, loss, or malfunction arising from their deployment.
+
+
+### Demo code to collect real-world data
+We provide a demo code to collect real-world data in the `sim2real/rl_policy/listener_deltaa.py` file. Since MoCap setup is hard to transfer across different robots/labs, we hope this code can help you to collect data for your own experiments. Contact us (tairanh@andrew.cmu.edu) if you have any questions.
+
+
+
+
+
 # Citation
 If you find our work useful, please consider citing us!
 
