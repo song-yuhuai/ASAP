@@ -25,6 +25,46 @@ Robotics: Science and Systems (RSS) 2025
 </div>
 
 <!-- # Table of Contents -->
+## 📚 Table of Contents
+
+1. **[Overview](#overview)**  
+   - Links: [Website](https://agile.human2humanoid.com/) • [Arxiv](https://arxiv.org/pdf/2502.01143) • [Video](https://www.youtube.com/watch?v=tu7LSNYWDTs&ab_channel=LeCARLabatCMU)  
+ 
+
+2. **[Installation & Setup](#installation)**  
+   2.1 [Base Frameworks](#isaacgym-conda-env)  
+   2.2 [IsaacGym Setup](#install-isaacgym)  
+   2.3 [HumanoidVerse Setup](#install-humanoidverse)  
+   2.4 [IsaacSim + IsaacLab Setup](#isaaclab-environment)  
+   2.5 [Genesis Environment Setup](#genesis-environment)  
+
+3. **[Training Pipelines](#motion-tracking-training)**  
+   3.1 [Phase-Based Motion Tracking](#motion-tracking-training)  
+   3.2 [ASAP Delta Action Model](#asap-delta-action-model-training)  
+       - [Train Delta Action Model](#train-delta-action-model)  
+       - [Finetune Policy with Delta Action Model](#use-delta-action-model-for-policy-finetuning)  
+
+4. **[Motion Retargeting to Any Humanoid](#motion-retargeting-to-any-humanoid)**  
+   4.1 [Step 1: SMPL Shape Preparation](#1-smpl-shape-preparation)  
+   4.2 [Step 2: SMPL Motion Preparation (AMASS)](#2-smpl-motion-preparation-amass)  
+   4.3 [Step 3: Robot XML & Motion Config](#3-robot-xml-and-motion-config-preparation)  
+   4.4 [Step 4: Humanoid-SMPL Shape Fitting](#4-humanoid-smpl-shape-fitting)  
+   4.5 [Step 5: Humanoid-SMPL Motion Retargeting](#5-humanoid-smpl-motion-retargeting)  
+
+5. **[Deployment: Sim2Sim & Sim2Real](#sim2simsim2real)**  
+   5.1 [Environment Setup](#environment-setup)  
+   5.2 [Sim2Sim Deployment](#sim2sim)  
+       - Launch Simulation  
+       - Policy Control Shortcuts  
+   5.3 [Sim2Real Deployment](#sim2real)  
+       - Unitree G1 Setup & Configuration  
+       - Running the Policy on Real Hardware  
+       - Safety Alerts & Disclaimer  
+       - Data Collection Demo  
+
+7. **[Citation](#citation)**  
+
+8. **[License](#license)**
 
 
 ## TODO
@@ -32,9 +72,9 @@ Robotics: Science and Systems (RSS) 2025
 - [x] Release phase-based motion tracking training pipeline
 - [x] Release ASAP motion datasets
 - [x] Release motion retargeting pipeline
-- [ ] Release sim2sim in MuJoCo
-- [ ] Release sim2real with UnitreeSDK
-- [ ] Release ASAP delta action model training pipeline
+- [x] Release sim2sim in MuJoCo
+- [x] Release sim2real with UnitreeSDK
+- [x] Release ASAP delta action model training pipeline
 
 
 # Installation
@@ -208,6 +248,67 @@ python humanoidverse/eval_agent.py \
 This is the visualization of the policy after traning 5800 iters. The policy is able to imitate the motion of Cristiano Ronaldo's Siuuu move. With more training, the policy will be more accurate and smooth (see the video in the [paper](https://arxiv.org/pdf/2502.01143)).
 
 <img src="imgs/motion_tracking_5800.gif" width="400px"/>
+
+
+# ASAP delta action model training
+
+Note that the only difference between the delta action model training and naive motion tracking training is that delta action model needs a motion file with extra keyname `"action"` in the motion file, so that the resulting RL policy we are training is able to use the delta action model to `"control the robot"` to match the real-world/sim2sim motions.
+
+
+## Train delta action model
+
+```
+python roboverse/train_agent.py \                                                                                   
+  +simulator=isaacgym \
+  +exp=train_delta_a_open_loop \
+  +domain_rand=NO_domain_rand \
+  +rewards=motion_tracking/delta_a/reward_delta_a_openloop \
+  +robot=g1/g1_29dof_anneal_23dof \
+  +terrain=terrain_locomotion_plane \
+  +obs=delta_a/open_loop \
+  num_envs=5000 \
+  project_name=DeltaA_Training \
+  experiment_name=openloopDeltaA_training \
+  robot.motion.motion_file="<PATH_TO_YOUR_MOTION_FILE_WITH_ACTION_KEYNAME>" \
+  env.config.max_episode_length_s=1.0 \
+  rewards.reward_scales.penalty_minimal_action_norm=-0.1 \
+  +device=cuda:0 \
+  env.config.resample_motion_when_training=True \
+  env.config.resample_time_interval_s=10000
+```
+
+## Use delta action model for policy finetuning
+
+
+```
+HYDRA_FULL_ERROR=1 \
+python roboverse/train_agent.py \
++simulator=isaacgym \
++exp=train_delta_a_closed_loop \
+algo.config.policy_checkpoint='<PATH_TO_YOUR_DELTA_A_MODEL>' \
++domain_rand=NO_domain_rand_finetune_with_deltaA \
++rewards=motion_tracking/reward_motion_tracking_dm_simfinetuning \
++robot=g1/g1_29dof_anneal_23dof \
++terrain=terrain_locomotion_plane \
++obs=delta_a/train_policy_with_delta_a \
+num_envs=4096 \
+project_name=DeltaA_Finetune \
+experiment_name=finetune_with_deltaA \
+robot.motion.motion_file="<PATH_TO_YOUR_MOTION_FILE>" \
++opt=wandb \
+env.config.add_extra_action=True \
++checkpoint="<PATH_TO_YOUR_POLICY_TO_BE_FINETUNED>" \
+domain_rand.push_robots=False \
+env.config.noise_to_initial_level=1 \
+rewards.reward_penalty_curriculum=True \
++device=cuda:0 \
+algo.config.save_interval=5 \
+algo.config.num_learning_iterations=1000 
+
+```
+
+
+
 
 
 # Motion Retargeting to Any Humanoid
