@@ -440,7 +440,7 @@ If you want to visualize the motion, you can run
 ```bash
 python scripts/vis/vis_q_mj.py +robot=g1/g1_29dof_anneal_23dof +visualize_motion_file="humanoidverse/data/motions/g1_29dof_anneal_23dof/TairanTestbed/singles/0-motions_raw_tairantestbed_smpl_video_side_jump_level4_filter_amass.pkl"
 ```
-You shouold have
+You should have
 
 <img src="imgs/g1_29dof_anneal_23dof_motion.gif" width="400px"/>
 
