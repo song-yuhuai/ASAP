@@ -514,6 +514,7 @@ python rl_policy/deepmimic_dec_loco_height.py --config=config/g1_29dof_hist.yaml
 
 - click to the policy terminal and press `]` to activate the locomotion policy
 - click to the policy terminal and press `[` to activate the asap policy (phase-based motion tracking policy)
+- click to the policy terminal and press `;` to switch to the asap policy 
 - press `i` to make the robot the initial position
 - press `o` to emergence stop the robot
 - press `9` in mujoco viewer to release the robostack
@@ -563,6 +564,7 @@ python rl_policy/deepmimic_dec_loco_height.py --config=config/g1_29dof_hist.yaml
 
 - click to the policy terminal and press `]` to activate the locomotion policy
 - click to the policy terminal and press `[` to activate the asap policy (phase-based motion tracking policy)
+- click to the policy terminal and press `;` to switch to the asap policy 
 - press `i` to make the robot the initial position
 - press `o` to emergence stop the robot
 - press `9` in mujoco viewer to release the robostack
