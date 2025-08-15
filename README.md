@@ -252,7 +252,7 @@ Note that the only difference between the delta action model training and naive 
 ## Train delta action model
 
 ```
-python roboverse/train_agent.py \                                                                                   
+python humanoidverse/train_agent.py \                                                                                   
   +simulator=isaacgym \
   +exp=train_delta_a_open_loop \
   +domain_rand=NO_domain_rand \
@@ -276,7 +276,7 @@ python roboverse/train_agent.py \
 
 ```
 HYDRA_FULL_ERROR=1 \
-python roboverse/train_agent.py \
+python humanoidverse/train_agent.py \
 +simulator=isaacgym \
 +exp=train_delta_a_closed_loop \
 algo.config.policy_checkpoint='<PATH_TO_YOUR_DELTA_A_MODEL>' \
