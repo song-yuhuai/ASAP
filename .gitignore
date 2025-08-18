@@ -83,3 +83,14 @@ build/
 devel/
 logs/
 *.log
+isaacgym/
+isaac-gym-preview-4/
+isaacgym/python/isaacgym/_bindings/linux-x86_64/
+*.npz
+*.pt
+*.onnx
+*.so
+build/
+devel/
+logs/
+*.log
