@@ -59,3 +59,15 @@ AMASS/*
 *.sh
 *.txt
 
+# Big/binary stuff we don't want in Git
+isaacgym/
+isaac-gym-preview-4/
+isaacgym/python/isaacgym/_bindings/linux-x86_64/
+*.so
+*.bin
+*.pt
+*.onnx
+build/
+devel/
+logs/
+*.log
