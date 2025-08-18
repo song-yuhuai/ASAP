@@ -94,3 +94,9 @@ build/
 devel/
 logs/
 *.log
+# Training artifacts
+logs/
+logs_eval/
+runs/
+# Don’t commit datasets/retarget inputs
+*.npz
