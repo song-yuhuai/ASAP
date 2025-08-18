@@ -196,7 +196,7 @@ robot:
     has_self_collision: True
     has_mesh: False
     has_jt_limit: False
-    has_dof_subset: True
+    has_dof_subset: False
     has_upright_start: True
     has_smpl_pd_offset: False
     remove_toe: False # For humanoid's geom toe

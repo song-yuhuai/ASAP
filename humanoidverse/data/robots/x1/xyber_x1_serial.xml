@@ -1,5 +1,5 @@
 <mujoco model="zhiyuan scene">
-  <compiler angle='radian' eulerseq="XYZ" meshdir="../meshes"
+  <compiler angle='radian' eulerseq="XYZ" meshdir="meshes/"
     autolimits="true" />
 
   <option timestep="0.001" />
@@ -112,7 +112,7 @@
                     <geom type='mesh' mesh='left_elbow_pitch' pos='0 0 0' euler='-0 0 -0'
                       rgba="0 0.5 1 1" />
 
-                    <body name="left_elbow_yaw" pos="0 0.117 0.031" quat="0.499999 0.499999 -0.500001 0.500001" left_hip_pitchgravcomp="0">
+                    <body name="left_elbow_yaw" pos="0 0.117 0.031" quat="0.499999 0.499999 -0.500001 0.500001" gravcomp="0">
                       <inertial pos="-0.00441829 -0.0011133 -0.0671345" quat="0.990089 0.12403 0.00491944 -0.065691" mass="0.803869" diaginertia="0.00198622 0.00186177 0.000729748"/>
                       <geom type='mesh' mesh='left_elbow_yaw' pos='0 0 0' euler='-0 0 -0'
                         rgba="0.8 1.0 0.8 1" />
@@ -373,6 +373,6 @@
 
 
   <keyframe>
-    <key name = "home_default" qpos = "0 0 0.61 1 0 0 0 0 0 0.48891 0.06213 -0.33853 0.63204 -0.27224 0. -0.48891 -0.06213 0.33853 0.63204 -0.27224 0."/>
+    <key name = "home_default" qpos = "0 0 0.61 1 0 0 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 -0.0 0.0 -0.0 0. -0.0 -0.0 0.0 0.0 -0.0 0."/>
   </keyframe>
 </mujoco>

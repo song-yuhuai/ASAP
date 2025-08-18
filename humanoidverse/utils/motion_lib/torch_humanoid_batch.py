@@ -52,7 +52,23 @@ class Humanoid_Batch:
         self.dof_axis = []
 
         joints = sorted([j.attrib['name'] for j in tree.getroot().find("worldbody").findall('.//joint')])
-        motors = sorted([m.attrib['name'] for m in tree.getroot().find("actuator").getchildren()])
+        motors = [m.attrib['joint'] for m in tree.getroot().find("actuator").findall('motor')]
+        motors = sorted(motors)
+
+
+        
+
+        
+
+        # --- DEBUG A: what’s in the XML?
+        j_elems = tree.getroot().find("worldbody").findall('.//joint')
+        print("[HB] total joints:", len(j_elems))
+        print("[HB] first joint: name=", j_elems[0].attrib.get("name"),
+            " type=", j_elems[0].attrib.get("type"),
+            " axis=", j_elems[0].attrib.get("axis"))
+        print("[HB] motors ({}):".format(len(motors)), motors)
+        print("[HB] joint names (first 20):", [j.attrib.get("name") for j in j_elems][:20])
+
         
         assert len(motors) > 0, "No motors found in the mjcf file"
         
@@ -66,25 +82,68 @@ class Humanoid_Batch:
         self._offsets = mjcf_data['local_translation'][None, ].to(device)
         self._local_rotation = mjcf_data['local_rotation'][None, ].to(device)
         self.actuated_joints_idx = np.array([self.body_names.index(k) for k, v in mjcf_data['body_to_joint'].items()])
+
+        # --- Which bodies have a hinge joint? (same order as FK uses body_names) ---
+        body_elems = tree.getroot().find("worldbody").findall(".//body")
+        body_by_name = {b.attrib.get("name"): b for b in body_elems if b.attrib.get("name")}
+
+        def _body_has_hinge(b):
+            if b is None:
+                return False
+            j = b.find("joint")
+            return (j is not None) and (j.attrib.get("type", "hinge") == "hinge")
+
+        self.body_has_joint = []
+        for name in self.body_names:             # must match FK order
+            self.body_has_joint.append(_body_has_hinge(body_by_name.get(name)))
+
+        # root never consumes a rotation from the 'rotations' tensor
+        if self.body_has_joint:
+            self.body_has_joint[0] = False
+
+        print("[HB] bodies:", len(self.body_names),
+            "hinge-bodies:", sum(1 for x in self.body_has_joint if x))
         
-        for m in motors:
-            if not m in joints:
-                print(m)
-        
+        # for m in motors:
+        #     if not m in joints:
+        #         print(m)
+        # --- DEBUG B: which dof-axis slice are we about to take?
+        first = j_elems[0]
+        first_type = first.attrib.get("type")
+        print("[HB] first joint type ->", first_type)
+
         if "type" in tree.getroot().find("worldbody").findall('.//joint')[0].attrib and tree.getroot().find("worldbody").findall('.//joint')[0].attrib['type'] == "free":
+            print("[HB] dof_axis uses joints[1:]; count =", len(j_elems)-1)
             for j in tree.getroot().find("worldbody").findall('.//joint')[1:]:
                 self.dof_axis.append([int(i) for i in j.attrib['axis'].split(" ")])
             self.has_freejoint = True
         elif not "type" in tree.getroot().find("worldbody").findall('.//joint')[0].attrib:
+            print("[HB] dof_axis uses joints[:]; count =", len(j_elems))
             for j in tree.getroot().find("worldbody").findall('.//joint'):
                 self.dof_axis.append([int(i) for i in j.attrib['axis'].split(" ")])
             self.has_freejoint = True
         else:
-            for j in tree.getroot().find("worldbody").findall('.//joint')[6:]:
+            print("[HB] dof_axis uses joints[:]; count =", len(j_elems))
+            for j in j_elems:   # ← use ALL hinge joints; do NOT slice [6:]
                 self.dof_axis.append([int(i) for i in j.attrib['axis'].split(" ")])
             self.has_freejoint = False
-        
+
+        # After the branch, right before converting to tensor:
+        # capture the names that correspond to each dof-axis row
+        if "type" in first.attrib and first.attrib['type'] == "free":
+            used_names = [j.attrib.get("name") for j in j_elems[1:]]
+        elif "type" not in first.attrib:
+            used_names = [j.attrib.get("name") for j in j_elems]
+        else:
+            used_names = [j.attrib.get("name") for j in j_elems]
+
+        self.dof_names = used_names  # expose them for debugging
         self.dof_axis = torch.tensor(self.dof_axis)
+        print("[HB] dof_names ({}):".format(len(self.dof_names)), self.dof_names)
+
+        self.dof_axis = torch.tensor(self.dof_axis)
+        print("[HB] built dof_axis.shape =", tuple(self.dof_axis.shape))
+
 
         for extend_config in cfg.extend_config:
             self.body_names_augment += [extend_config.joint_name]
@@ -186,6 +245,8 @@ class Humanoid_Batch:
         
         
         wbody_rot = wxyz_to_xyzw(matrix_to_quaternion(wbody_mat))
+
+        
         if len(self.cfg.extend_config) > 0:
             if return_full:
                 return_dict.global_velocity_extend = self._compute_velocity(wbody_pos, dt) 
@@ -244,25 +305,45 @@ class Humanoid_Batch:
         expanded_offsets = (self._offsets[:, None].expand(B, seq_len, J, 3).to(device).type(dtype))
         # print(expanded_offsets.shape, J)
 
-        # import ipdb; ipdb.set_trace()   
+        # import ipdb; ipdb.set_trace()  
+        rot_cursor = 0
+        I = torch.eye(3, device=rotations.device, dtype=rotations.dtype).view(1, 1, 3, 3)
+
         for i in range(J):
             if self._parents[i] == -1:
                 positions_world.append(root_positions)
                 rotations_world.append(root_rotations)
             else:
                 try:
-                    jpos = (torch.matmul(rotations_world[self._parents[i]][:, :, 0], expanded_offsets[:, :, i, :, None]).squeeze(-1) + positions_world[self._parents[i]])
-                    rot_mat = torch.matmul(rotations_world[self._parents[i]], torch.matmul(self._local_rotation_mat[:,  (i):(i + 1)], rotations[:, :, (i - 1):i, :]))
+                    # position comp unchanged
+                    jpos = (torch.matmul(rotations_world[self._parents[i]][:, :, 0],
+                                        expanded_offsets[:, :, i, :, None]).squeeze(-1)
+                            + positions_world[self._parents[i]])
+
+                    # choose local rotation for body i
+                    if self.body_has_joint[i]:
+                        Rloc = rotations[:, :, rot_cursor:rot_cursor+1, :, :]
+                        rot_cursor += 1
+                    else:
+                        Rloc = I.expand(rotations.shape[0], rotations.shape[1], 1, 3, 3)
+
+                    rot_mat = torch.matmul(
+                        rotations_world[self._parents[i]],
+                        torch.matmul(self._local_rotation_mat[:, i:i+1], Rloc)
+                    )
                 except Exception as e:
                     logger.error(f"Error at joint index {i}")
                     logger.error(f"Parent index: {self._parents[i]}")
                     logger.error(f"Error details: {str(e)}")
                     import ipdb; ipdb.set_trace()
-                # rot_mat = torch.matmul(rotations_world[self._parents[i]], rotations[:, :, (i - 1):i, :])
-                # print(rotations[:, :, (i - 1):i, :].shape, self._local_rotation_mat.shape)
-                
+
                 positions_world.append(jpos)
                 rotations_world.append(rot_mat)
+
+        # after loop, sanity:
+        assert rot_cursor == rotations.shape[2], \
+            f"Consumed {rot_cursor} rotations, but have {rotations.shape[2]}"
+
         
         positions_world = torch.stack(positions_world, dim=2)
         rotations_world = torch.cat(rotations_world, dim=2)

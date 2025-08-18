@@ -17,6 +17,7 @@ from torch.autograd import Variable
 from tqdm import tqdm
 from smpl_sim.smpllib.smpl_joint_names import SMPL_MUJOCO_NAMES, SMPL_BONE_ORDER_NAMES, SMPLH_BONE_ORDER_NAMES, SMPLH_MUJOCO_NAMES
 from humanoidverse.utils.motion_lib.torch_humanoid_batch import Humanoid_Batch
+
 from smpl_sim.utils.smoothing_utils import gaussian_kernel_1d, gaussian_filter_1d_batch
 from easydict import EasyDict
 import hydra
@@ -52,6 +53,53 @@ def process_motion(key_names, key_name_to_pkls, cfg):
     logger.info(colored(f"Retargeting Motion...", "cyan"))
     device = torch.device("cpu")
     humanoid_fk = Humanoid_Batch(cfg.robot.motion) # load forward kinematics model
+        # -------- DEBUG: what's my DoF, where did 14 come from? --------
+    print("[DEBUG] HB file OK")
+    print("[DEBUG] fk.dof_axis.shape:", tuple(humanoid_fk.dof_axis.shape))   # expect (20, 3)
+    print("[DEBUG] humanoid_fk.num_dof:", humanoid_fk.num_dof)               # expect 20
+
+    print("[DEBUG] fk.dof_names:", getattr(humanoid_fk, "dof_names", None))
+    print("[DEBUG] fk.dof_axis.shape:", tuple(humanoid_fk.dof_axis.shape))
+
+    print("[DEBUG] has_dof_subset         =", cfg.robot.motion.has_dof_subset)
+    try:
+        print("[DEBUG] cfg.robot.dof_names    =", list(cfg.robot.dof_names))
+    except Exception:
+        pass
+    try:
+        print("[DEBUG] cfg.motion.dof_names   =", list(cfg.robot.motion.dof_names))
+    except Exception:
+        pass
+
+    # What Humanoid_Batch actually built:
+    print("[DEBUG] humanoid_fk.num_dof    =", humanoid_fk.num_dof)
+    print("[DEBUG] dof_axis.shape         =", tuple(humanoid_fk.dof_axis.shape))  # expect (..., ..., <num_dof>, 3)
+
+    # Compare against actuated joints in the XML (motors)
+    import os, xml.etree.ElementTree as ET
+    xml_path = os.path.join(cfg.robot.motion.asset.assetRoot, cfg.robot.motion.asset.assetFileName)
+    motors = []
+    try:
+        root = ET.parse(xml_path).getroot()
+        act = root.find("actuator")
+        if act is not None:
+            motors = [m.get("joint") for m in act.findall("motor") if m.get("joint")]
+        print("[DEBUG] XML motors ({}):".format(len(motors)), motors)
+    except Exception as e:
+        print("[DEBUG] XML parse failed:", e)
+
+    # If we have a motion subset list, check mismatches quickly
+    try:
+        want = list(cfg.robot.motion.dof_names)
+        missing = [n for n in want if n not in motors]
+        extra   = [n for n in motors if n not in want]
+        print("[DEBUG] in motion.dof_names but NOT in XML motors:", missing)
+        print("[DEBUG] in XML motors but NOT in motion.dof_names:", extra)
+        print("[DEBUG] |motion.dof_names| =", len(want))
+    except Exception:
+        pass
+    # -------- END DEBUG --------
+
     num_augment_joint = len(cfg.robot.motion.extend_config)
 
     #### Define corresonpdances between h1 and smpl joints
@@ -118,6 +166,12 @@ def process_motion(key_names, key_name_to_pkls, cfg):
 
             for iteration in range(cfg.get("fitting_iterations", 1000)):
                 pose_aa_h1_new = torch.cat([root_rot_new[None, :, None], humanoid_fk.dof_axis * dof_pos_new, torch.zeros((1, N, num_augment_joint, 3)).to(device)], axis = 2)
+
+                print("[DEBUG] rotations expected:", humanoid_fk.num_dof, 
+                      "got:", pose_aa_h1_new.shape[2] - 1, "(after root)")
+
+                
+
                 fk_return = humanoid_fk.fk_batch(pose_aa_h1_new, root_trans_offset[None, ] + root_pos_offset )
                 
                 if num_augment_joint > 0:
@@ -147,8 +201,21 @@ def process_motion(key_names, key_name_to_pkls, cfg):
             root_trans_offset_dump = (root_trans_offset + root_pos_offset ).clone()
             #js change
             joint_min_id = torch.argmin(torch.min(fk_return.global_translation[..., 2].detach(),dim=-1)[0]).item()
-            combined_mesh = humanoid_fk.mesh_fk(pose_aa_h1_new[:, joint_min_id:joint_min_id+1].detach(), root_trans_offset_dump[None, joint_min_id:joint_min_id+1].detach())
-            height_diff = np.asarray(combined_mesh.vertices)[..., 2].min()
+            #combined_mesh = humanoid_fk.mesh_fk(pose_aa_h1_new[:, joint_min_id:joint_min_id+1].detach(), root_trans_offset_dump[None, joint_min_id:joint_min_id+1].detach())
+            #height_diff = np.asarray(combined_mesh.vertices)[..., 2].min()
+            # after you have fk_return for the final pose:
+            # get min Z of the feet over the clip
+            foot_names = ["left_ankle_roll_link", "right_ankle_roll_link"]  # adjust if yours differ
+            foot_idx = [humanoid_fk.body_names.index(n) for n in foot_names if n in humanoid_fk.body_names]
+
+            if foot_idx:
+                feet_z = fk_return.global_translation[0, :, foot_idx, 2]       # (T, #feet) tensor, requires_grad=True
+                height_diff = float(feet_z.min().detach().cpu().item())        # <-- detach before numpy/item
+            else:
+                print("[WARN] No foot bodies found; using height_diff=0")
+                height_diff = 0.0
+
+
 
             root_trans_offset_dump[..., 2] -= height_diff
             joints_dump = joints.numpy().copy()

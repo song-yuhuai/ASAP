@@ -5,6 +5,7 @@ import torch
 import numpy as np
 import mujoco
 import mujoco.viewer
+
 from scipy.spatial.transform import Rotation as sRot
 import joblib
 import hydra
@@ -69,6 +70,8 @@ def main(cfg : DictConfig) -> None:
 
     mj_model = mujoco.MjModel.from_xml_path(str(humanoid_xml))
     mj_data = mujoco.MjData(mj_model)
+
+    
 
     mj_model.opt.timestep = dt
     with mujoco.viewer.launch_passive(mj_model, mj_data, key_callback=key_call_back) as viewer:
