@@ -83,6 +83,29 @@ def main(cfg : DictConfig) -> None:
             loss.backward()
             optimizer_shape.step()
             progress.update(task, advance=1, description=f"Fitting Shape...Iteration {iteration} Loss: {loss.item() * 1000}")
+        # ---- Debug: per-joint error summary (add this right after the loop) ----
+    with torch.no_grad():
+        # Recompute SMPL joints with the fitted shape & scale
+        verts, joints = smpl_parser_n.get_joints_verts(pose_aa_stand, shape_new, trans[0:1])
+        root_pos = joints[:, 0]
+        joints = (joints - joints[:, 0:1]) * scale + root_pos
+
+        # Use extended frames if extend_config is defined
+        pred = fk_return.global_translation_extend if len(cfg.robot.motion.extend_config) > 0 \
+               else fk_return.global_translation
+
+        # Errors for the matched pairs
+        err = (pred[0, :, robot_joint_pick_idx] - joints[:, smpl_joint_pick_idx]).norm(dim=-1).squeeze(0)
+
+        names_robot = [humanoid_fk.body_names_augment[i] for i in robot_joint_pick_idx]
+        mean_mm = float(err.mean() * 1000)
+        max_mm  = float(err.max()  * 1000)
+        print(f"[DEBUG] per-joint error: mean={mean_mm:.1f} mm, max={max_mm:.1f} mm")
+
+        topk = sorted(zip(names_robot, (err * 1000).tolist()), key=lambda x: x[1], reverse=True)[:10]
+        for n, e in topk:
+            print(f"[DEBUG] {n:28s} {e:.1f} mm")
+
 
     if cfg.get("vis", False):
         from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import

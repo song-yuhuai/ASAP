@@ -361,6 +361,8 @@ mimic_robot_types: {
 
   "CR7_level1": "g1_29dof_anneal_23dof",
 
+  "dance": "g1_29dof_anneal_23dof",
+
 
   "jump_forward_level1": "g1_29dof_anneal_23dof",
   "jump_forward_level2": "g1_29dof_anneal_23dof",
@@ -395,6 +397,8 @@ mimic_models: {
   "APT_level1": "model_176500.onnx",
   
   "CR7_level1": "model_191500.onnx",
+
+  "dance": "model_138000.onnx",
 
   "jump_forward_level1": "model_191500.onnx",
   "jump_forward_level2": "model_130500.onnx",
@@ -439,11 +443,14 @@ start_upper_body_dof_pos: {
   
 
   "CR7_level1":
-  [0.20492185652256012, -0.1423935443162918, -0.5196797847747803, 
-  0.37753403186798096, 0.4606001079082489, -0.4165497124195099, 0.7984108328819275, 
-  -0.09108904749155045, 0.0742582231760025, -0.10187414288520813, 
-  0.24138350784778595, -0.35501086711883545, 0.29590970277786255, 0.9259377717971802, 
-  0.0897110104560852, 0.05953628197312355, 0.07013951241970062],
+  [0.0, 0.0, 0.0, 
+  0.0, 0.0, 0.0, 0.0, 
+  0.0, 0.0, 0.0, 
+  0.0, 0.0, 0.0, 0.0, 
+  0.0, 0.0, 0.0],
+
+  "dance":
+  [ -0.043063, 0.005846, -0.040544, 0.068431, 1.410495, 0.717511, 0.554945, 0, 0, 0, 0.067674, -1.269682, -0.823024, 0.616730, 0, 0, 0 ],
 
   
   "jump_forward_level1":
@@ -547,6 +554,8 @@ motion_length_s: {
 
   "CR7_level1": 3.967,
 
+  "dance": 6.4,
+
   "jump_forward_level1": 3.76,
   "jump_forward_level2": 3.56,
   "jump_forward_level3": 4.26,
@@ -560,7 +569,7 @@ motion_length_s: {
   "lebron_level1": 5.067,
   "lebron_level2": 6.967,
 
-  "Kobe_level1": 4.16,
+  "Kobe_level1": 5.16,
 
 
   "side_jump_level1": 3.06,
