@@ -167,8 +167,8 @@ def process_motion(key_names, key_name_to_pkls, cfg):
             for iteration in range(cfg.get("fitting_iterations", 1000)):
                 pose_aa_h1_new = torch.cat([root_rot_new[None, :, None], humanoid_fk.dof_axis * dof_pos_new, torch.zeros((1, N, num_augment_joint, 3)).to(device)], axis = 2)
 
-                print("[DEBUG] rotations expected:", humanoid_fk.num_dof, 
-                      "got:", pose_aa_h1_new.shape[2] - 1, "(after root)")
+                # print("[DEBUG] rotations expected:", humanoid_fk.num_dof, 
+                #       "got:", pose_aa_h1_new.shape[2] - 1, "(after root)")
 
                 
 

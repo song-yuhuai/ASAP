@@ -67,7 +67,7 @@
     <mesh name="right_ankle_roll" file="right_ankle_roll.STL" />
   </asset>
   <worldbody>
-    <body name = "x1-body" pos = "0 0 0.63">
+    <body name = "base_link" pos = "0 0 0.63">
       <inertial pos="0.00252285 -0.00063439 0.03023409" mass="4.3041648" fullinertia="0.02680559 0.01083128 0.02180955 -5.49e-06 5.389e-05  -0.00011229 "/>
       <freejoint name="floating_base"/>
       <geom type="mesh" rgba="0.8 0.4 0 1" mesh="base_link_simple" />
@@ -75,16 +75,19 @@
       <camera name="track" pos="0 -3 1" quat="0.850651 0.525731 0 0" mode="track" />
       <site name = "imu" size = "0.01" pos = "0 0 0" />
 
-      <body name="body_yaw" pos="0.00245 0 0.115534" quat="1 0 0 -2.27456e-05">
+      <body name="lumber_yaw" pos="0.00245 0 0.115534" quat="1 0 0 -2.27456e-05">
         <inertial pos="-0.0180007 1.4e-06 0.0243298" quat="-7.72625e-06 0.78309 -2.54549e-05 0.621909" mass="0.362519" diaginertia="0.000655093 0.00045823 0.000342457"/>
+        <joint name="lumber_yaw" type="hinge" pos="0 0 0" axis="0 0 1" damping="1" range="-3.14 3.14" />
         <geom type='mesh' mesh='body_yaw' pos='0 0 0' euler='-0 0 -0' rgba="1 0.4 0.4 1" />
 
-        <body name="body_roll" pos="0 0 0.0405" quat="0.5 0.5 -0.5 -0.5">
+        <body name="lumber_roll" pos="0 0 0.0405" quat="0.5 0.5 -0.5 -0.5">
           <inertial pos="-0.00029919 0.0003642 -0.00019197" quat="0.773215 -0.138631 -0.0225684 0.618394" mass="0.0341207" diaginertia="5.46439e-06 4.90308e-06 4.81253e-06"/>
+          <joint name="lumber_roll" type="hinge" pos="0 0 0" axis="1 0 0" damping="1" range="-3.14 3.14" />
           <geom type='mesh' mesh='body_roll' pos='0 0 0' euler='-0 0 -0' rgba="1 1 0.4 1"/>
 
-          <body name="body_pitch" pos="0 0 0" quat="0.707107 0 0.707107 0">
+          <body name="lumber_pitch" pos="0 0 0" quat="0.707107 0 0.707107 0">
             <inertial pos="-0.000617851 0.206789 -0.00114246" quat="0.70235 0.7111 -0.0266182 -0.0182289" mass="9.08107" diaginertia="0.154848 0.118223 0.0621153"/>
+            <joint name="lumber_pitch" type="hinge" pos="0 0 0" axis="0 1 0" damping="1" range="-3.14 3.14" />
             <geom type='mesh' mesh='body_pitch' pos='0 0 0' rgba="0.4 1 0.4 1" />
             <geom type='mesh' mesh='body_pitch' pos='0 0 0' rgba="0.4 1 0.4 1" class="collision"/>
 
@@ -330,6 +333,10 @@
     <motor name = 'motor_right_knee_pitch' joint = 'right_knee_pitch' ctrlrange = '-150 150' />
     <motor name = 'motor_right_ankle_pitch' joint = 'right_ankle_pitch' ctrlrange = '-18 18' />
     <motor name = 'motor_right_ankle_roll' joint = 'right_ankle_roll' ctrlrange = '-18 18' />
+
+    <motor name="motor_lumber_yaw" joint="lumber_yaw"/>
+    <motor name="motor_lumber_roll" joint="lumber_roll"/>
+    <motor name="motor_lumber_pitch" joint="lumber_pitch"/>
   </actuator>
 
   <sensor>
@@ -373,6 +380,6 @@
 
 
   <keyframe>
-    <key name = "home_default" qpos = "0 0 0.61 1 0 0 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 -0.0 0.0 -0.0 0. -0.0 -0.0 0.0 0.0 -0.0 0."/>
+    <key name = "home_default" qpos = "0 0 0.61 1 0 0 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 -0.0 0.0 -0.0 0. -0.0 -0.0 0.0 0.0 0.0 1.57"/>
   </keyframe>
 </mujoco>

@@ -102,7 +102,7 @@ def main(cfg : DictConfig) -> None:
         max_mm  = float(err.max()  * 1000)
         print(f"[DEBUG] per-joint error: mean={mean_mm:.1f} mm, max={max_mm:.1f} mm")
 
-        topk = sorted(zip(names_robot, (err * 1000).tolist()), key=lambda x: x[1], reverse=True)[:10]
+        topk = sorted(zip(names_robot, (err * 1000).tolist()), key=lambda x: x[1], reverse=True)[:]
         for n, e in topk:
             print(f"[DEBUG] {n:28s} {e:.1f} mm")
 

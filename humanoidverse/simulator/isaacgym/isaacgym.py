@@ -152,7 +152,40 @@ class IsaacGym(BaseSimulator):
         self.robot_asset = self._setup_robot_asset_when_env_created(asset_root, asset_file, self.robot_config.asset)
         self.num_dof, self.num_bodies, self.dof_names, self.body_names = self._setup_robot_props_when_env_created()
         
-        # assert if  aligns with config
+        from pprint import pprint
+
+        gym_dofs = self.dof_names
+        cfg_dofs = list(self.robot_config.dof_names)
+
+        print("NUM gym_dofs =", len(gym_dofs), "NUM cfg_dofs =", len(cfg_dofs))
+        print("GYM order:", self.dof_names)  # from isaacgym.py
+
+        # Spot the first index where names differ (order matters)
+        for i, (g, c) in enumerate(zip(gym_dofs, cfg_dofs)):
+            if g != c:
+                print("FIRST DOF NAME MISMATCH @", i, "->", repr(g), "vs", repr(c))
+                break
+        else:
+            if len(gym_dofs) != len(cfg_dofs):
+                print("Length mismatch only.")
+            else:
+                print("Names appear identical in order.")
+        # Full set diffs (order-insensitive) to catch typos/extra spaces
+        print("EXTRA in YAML:",   [c for c in cfg_dofs if c not in gym_dofs])
+        print("MISSING in YAML:", [g for g in gym_dofs if g not in cfg_dofs])
+
+        from itertools import zip_longest
+
+        print("=== DEBUG BODY NAMES ===")
+        print("GYM bodies (sim):", self.body_names)
+        print("CFG bodies (yaml):", self.robot_config.body_names)
+        # quick diff
+        for i, (a, b) in enumerate(zip_longest(self.body_names, self.robot_config.body_names, fillvalue="——")):
+            tag = "OK" if a == b else "MISMATCH"
+            print(f"{i:02d}: {a}  |  {b}   [{tag}]")
+
+
+        
         assert self.num_dof == len(self.robot_config.dof_names), "Number of DOFs must be equal to number of actions"
         assert self.num_bodies == len(self.robot_config.body_names), "Number of bodies must be equal to number of body names"
         assert self.dof_names == self.robot_config.dof_names, "DOF names must match the config"

@@ -85,10 +85,14 @@ class LeggedRobotMotionTracking(LeggedRobotBase):
 
         else:
             self.save_motion = False
+    
 
     def _init_motion_lib(self):
         self.config.robot.motion.step_dt = self.dt
         self._motion_lib = MotionLibRobot(self.config.robot.motion, num_envs=self.num_envs, device=self.device)
+        if hasattr(self._motion_lib, "cfg"):
+            self._motion_lib.cfg.extend_config = []
+        #print("[MotionLib] extend_config len =", len(getattr(self._motion_lib.cfg, "extend_config", [])))
         if self.is_evaluating:
             self._motion_lib.load_motions(random_sample=False)
         else:
@@ -101,6 +105,24 @@ class LeggedRobotMotionTracking(LeggedRobotBase):
         self.num_motions = self._motion_lib._num_unique_motions
 
     def _init_tracking_config(self):
+        # in _init_tracking_config(), just before using .index(...)
+        sim_names = list(self.simulator._body_list)
+        print("[Bodies] count =", len(sim_names))
+        for i, n in enumerate(sim_names):
+            print(f"[Bodies] {i:2d}: {n}")
+
+        print("[Config] lower_body_link:", list(self.config.robot.motion.lower_body_link))
+        print("[Config] upper_body_link:", list(self.config.robot.motion.upper_body_link))
+
+        # helpful error with suggestions
+        import difflib
+        missing = [n for n in self.config.robot.motion.lower_body_link if n not in sim_names]
+        missing += [n for n in self.config.robot.motion.upper_body_link if n not in sim_names]
+        if missing:
+            sugg = {m: difflib.get_close_matches(m, sim_names, n=3) for m in missing}
+            raise ValueError(f"Body names not found: {missing}. Close matches: {sugg}")
+
+
         if "motion_tracking_link" in self.config.robot.motion:
             self.motion_tracking_id = [self.simulator._body_list.index(link) for link in self.config.robot.motion.motion_tracking_link]
         if "lower_body_link" in self.config.robot.motion:
@@ -111,30 +133,47 @@ class LeggedRobotMotionTracking(LeggedRobotBase):
             self.resample_time_interval = np.ceil(self.config.resample_time_interval_s / self.dt)
         
     def _init_motion_extend(self):
-        if "extend_config" in self.config.robot.motion:
-            extend_parent_ids, extend_pos, extend_rot = [], [], []
-            for extend_config in self.config.robot.motion.extend_config:
-                extend_parent_ids.append(self.simulator._body_list.index(extend_config["parent_name"]))
-                # extend_parent_ids.append(self.simulator.find_rigid_body_indice(extend_config["parent_name"]))
-                extend_pos.append(extend_config["pos"])
-                extend_rot.append(extend_config["rot"])
-                self.simulator._body_list.append(extend_config["joint_name"])
+        extend_cfg = getattr(self.config.robot.motion, "extend_config", [])
+        if not extend_cfg:
+            # No extend bodies: create consistent empty tensors and return
+            self.num_extend_bodies = 0
+            self.extend_body_parent_ids = torch.empty(0, dtype=torch.long, device=self.device)
+            self.extend_body_pos_in_parent = torch.empty(self.num_envs, 0, 3, device=self.device)
+            self.extend_body_rot_in_parent_wxyz = torch.empty(self.num_envs, 0, 4, device=self.device)
+            self.extend_body_rot_in_parent_xyzw = self.extend_body_rot_in_parent_wxyz  # same shape
+            self.ref_body_pos_extend = torch.zeros(self.num_envs, self.num_bodies, 3, device=self.device)
+            self.ref_body_rot_extend = torch.zeros(self.num_envs, self.num_bodies, 4, device=self.device)
+            self.ref_body_vel_extend = torch.zeros(self.num_envs, self.num_bodies, 3, device=self.device)
+            self.ref_body_ang_vel_extend = torch.zeros(self.num_envs, self.num_bodies, 3, device=self.device)
 
-            self.extend_body_parent_ids = torch.tensor(extend_parent_ids, device=self.device, dtype=torch.long)
-            self.extend_body_pos_in_parent = torch.tensor(extend_pos).repeat(self.num_envs, 1, 1).to(self.device)
-            self.extend_body_rot_in_parent_wxyz = torch.tensor(extend_rot).repeat(self.num_envs, 1, 1).to(self.device)
-            self.extend_body_rot_in_parent_xyzw = self.extend_body_rot_in_parent_wxyz[:, :, [1, 2, 3, 0]]
-            self.num_extend_bodies = len(extend_parent_ids)
+            # allocate without extend bodies
+            self.marker_coords       = torch.zeros(self.num_envs, self.num_bodies, 3, device=self.device)
+            self.ref_body_pos_extend = torch.zeros(self.num_envs, self.num_bodies, 3, device=self.device)
+            self.dif_global_body_pos = torch.zeros(self.num_envs, self.num_bodies, 3, device=self.device)
+            return
+        extend_parent_ids, extend_pos, extend_rot = [], [], []
+        for extend_config in self.config.robot.motion.extend_config:
+            extend_parent_ids.append(self.simulator._body_list.index(extend_config["parent_name"]))
+            # extend_parent_ids.append(self.simulator.find_rigid_body_indice(extend_config["parent_name"]))
+            extend_pos.append(extend_config["pos"])
+            extend_rot.append(extend_config["rot"])
+            self.simulator._body_list.append(extend_config["joint_name"])
 
-            self.marker_coords = torch.zeros(self.num_envs, 
-                                         self.num_bodies + self.num_extend_bodies, 
-                                         3, 
-                                         dtype=torch.float, 
-                                         device=self.device, 
-                                         requires_grad=False) # extend
-            
-            self.ref_body_pos_extend = torch.zeros(self.num_envs, self.num_bodies + self.num_extend_bodies, 3, dtype=torch.float, device=self.device, requires_grad=False)
-            self.dif_global_body_pos = torch.zeros(self.num_envs, self.num_bodies + self.num_extend_bodies, 3, dtype=torch.float, device=self.device, requires_grad=False)
+        self.extend_body_parent_ids = torch.tensor(extend_parent_ids, device=self.device, dtype=torch.long)
+        self.extend_body_pos_in_parent = torch.tensor(extend_pos).repeat(self.num_envs, 1, 1).to(self.device)
+        self.extend_body_rot_in_parent_wxyz = torch.tensor(extend_rot).repeat(self.num_envs, 1, 1).to(self.device)
+        self.extend_body_rot_in_parent_xyzw = self.extend_body_rot_in_parent_wxyz[:, :, [1, 2, 3, 0]]
+        self.num_extend_bodies = len(extend_parent_ids)
+
+        self.marker_coords = torch.zeros(self.num_envs, 
+                                    self.num_bodies + self.num_extend_bodies, 
+                                    3, 
+                                    dtype=torch.float, 
+                                    device=self.device, 
+                                    requires_grad=False) # extend
+        
+        self.ref_body_pos_extend = torch.zeros(self.num_envs, self.num_bodies + self.num_extend_bodies, 3, dtype=torch.float, device=self.device, requires_grad=False)
+        self.dif_global_body_pos = torch.zeros(self.num_envs, self.num_bodies + self.num_extend_bodies, 3, dtype=torch.float, device=self.device, requires_grad=False)
 
     def start_compute_metrics(self):
         self.compute_metrics = True
