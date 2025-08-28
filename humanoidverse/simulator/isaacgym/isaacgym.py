@@ -151,6 +151,11 @@ class IsaacGym(BaseSimulator):
         asset_file = self.robot_config.asset.urdf_file
         self.robot_asset = self._setup_robot_asset_when_env_created(asset_root, asset_file, self.robot_config.asset)
         self.num_dof, self.num_bodies, self.dof_names, self.body_names = self._setup_robot_props_when_env_created()
+
+        print("[REF sim] gym actor asset=",
+                self.robot_config.asset.asset_root, "/", self.robot_config.asset.urdf_file,
+                flush=True)
+
         
         # assert if  aligns with config
         assert self.num_dof == len(self.robot_config.dof_names), "Number of DOFs must be equal to number of actions"

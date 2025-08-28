@@ -58,6 +58,27 @@ class LeggedRobotMotionTracking(LeggedRobotBase):
             self.terminate_when_motion_far_threshold = self.config.termination_scales.termination_motion_far_threshold
             logger.info(f"Terminate when motion far threshold: {self.terminate_when_motion_far_threshold}")
 
+    def _dbg_log_motion_res(self, motion_res, motion_times, tag="step"):
+        # throttle to avoid spam
+        c = getattr(self, "_dbg_counter", 0) + 1
+        self._dbg_counter = c
+        if c % 500 != 0:
+            return
+
+        env_id = 0  # inspect one env
+        if hasattr(self, "reset_buf") and torch.any(self.reset_buf):
+            return  # skip during bulk resets for clearer logs
+
+        # summarize a few useful fields if present
+        fields = ["root_pos", "root_rot", "root_vel", "root_ang_vel",
+                "dof_pos", "dof_vel",
+                "rg_pos_t", "rg_rot_t", "body_vel_t", "body_ang_vel_t"]
+        shapes = {k: tuple(v.shape) for k, v in motion_res.items()
+                if k in fields and hasattr(v, "shape")}
+        t = motion_times[env_id].item() if hasattr(motion_times, "shape") else float(motion_times)
+        mid = int(self.motion_ids[env_id].item()) if hasattr(self, "motion_ids") else -1
+        logger.debug(f"[REF {tag}] env={env_id} t={t:.4f} motion_id={mid} shapes={shapes}")
+
 
 
         
@@ -236,6 +257,9 @@ class LeggedRobotMotionTracking(LeggedRobotBase):
         motion_times = (self.episode_length_buf + 1) * self.dt + self.motion_start_times # next frames so +1
         # motion_res = self._get_state_from_motionlib_cache_trimesh(self.motion_ids, motion_times, offset= offset)
         motion_res = self._motion_lib.get_motion_state(self.motion_ids, motion_times, offset=offset)
+        ## DEBUG
+        
+        # print(f"[REF pre_obs] t={float(motion_times[0].item()):.4f} keys={list(motion_res.keys())[:6]}", flush=True)
 
         ref_body_pos_extend = motion_res["rg_pos_t"]
         self.ref_body_pos_extend[:] = ref_body_pos_extend # for visualization and analysis
@@ -405,6 +429,10 @@ class LeggedRobotMotionTracking(LeggedRobotBase):
             motion_times = (self.episode_length_buf) * self.dt + self.motion_start_times # next frames so +1
             offset = self.env_origins
             motion_res = self._motion_lib.get_motion_state(self.motion_ids, motion_times, offset=offset)
+            ## DEBUG
+            
+            # print("[REF reset_root] got motion_res", flush=True)
+
             self.simulator.robot_root_states[env_ids, :3] = motion_res['root_pos'][env_ids]
             # self.robot_root_states[env_ids, 2] += 0.04 # in case under the terrain
             if self.config.simulator.config.name == 'isaacgym':
@@ -422,6 +450,11 @@ class LeggedRobotMotionTracking(LeggedRobotBase):
             motion_times = (self.episode_length_buf) * self.dt + self.motion_start_times # next frames so +1
             offset = self.env_origins
             motion_res = self._motion_lib.get_motion_state(self.motion_ids, motion_times, offset=offset)
+            
+
+            ## DEBUG
+            
+            # print("[REF reset_root] got motion_res", flush=True)
 
 
             root_pos_noise = self.config.init_noise_scale.root_pos * self.config.noise_to_initial_level

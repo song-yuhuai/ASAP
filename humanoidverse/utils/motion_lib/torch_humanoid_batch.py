@@ -80,7 +80,7 @@ class Humanoid_Batch:
                 self.dof_axis.append([int(i) for i in j.attrib['axis'].split(" ")])
             self.has_freejoint = True
         else:
-            for j in tree.getroot().find("worldbody").findall('.//joint')[6:]:
+            for j in tree.getroot().find("worldbody").findall('.//joint')[:]:
                 self.dof_axis.append([int(i) for i in j.attrib['axis'].split(" ")])
             self.has_freejoint = False
         

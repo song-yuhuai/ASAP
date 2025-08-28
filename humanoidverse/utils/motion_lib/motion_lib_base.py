@@ -56,6 +56,28 @@ class MotionLibBase():
         logger.info(f"Loaded skeleton from {skeleton_file}")
         logger.info(f"Loading motion data from {self.m_cfg.motion_file}...")
         self.load_data(self.m_cfg.motion_file)
+        ## DEBUG
+        # from pathlib import Path
+        print("[REF load] motionlib skeleton_file=",
+            Path(self.m_cfg.asset.assetRoot) / self.m_cfg.asset.assetFileName,
+            flush=True)
+
+        if isinstance(self._motion_data_load, dict) and self._motion_data_load:
+            k0 = next(iter(self._motion_data_load))
+            d0 = self._motion_data_load[k0]
+            print(f"[REF load] first motion key: {k0}", flush=True)
+            for k in ["fps", "pose_aa", "pose_quat_global", "root_trans_offset", "root_quat", "action"]:
+                if k in d0:
+                    v = d0[k]
+                    try:
+                        shp = v.shape  # numpy/torch
+                    except Exception:
+                        try:
+                            shp = f"len={len(v)}"
+                        except Exception:
+                            shp = type(v).__name__
+                    print(f"[REF load] {k}: {shp}", flush=True)
+
         self.setup_constants(fix_height = False,  multi_thread = False)
         if flags.real_traj:
             self.track_idx = self._motion_data_load[next(iter(self._motion_data_load))].get("track_idx", [19, 24, 29])
